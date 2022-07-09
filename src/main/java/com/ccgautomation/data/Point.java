@@ -8,17 +8,22 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/*
+    Construction of this object guarantees that all fields are valid objects of the required type.
+    If any fields are not valid during construction, the constructor throws the appropriate exception.
+ */
+
 public class Point {
 
-    private Date date;
-    private Float value;
+    private final Date date;
+    private final Float value;
 
     public Point(String dateString, String valueString) throws ParseException, NumberFormatException, NullPointerException {
         if (dateString == null) throw new NullPointerException("Date cannot be null.");
         if (valueString == null) throw new NullPointerException("Value cannot be null.");
         DateTools dateTools = new DateTools(Configuration.trendCSVFileDatePattern);
         this.date = dateTools.convertStringToDate(dateString);
-        value = Float.parseFloat(valueString);
+        this.value = Float.parseFloat(valueString);
     }
 
     public Point(Date date, Float value) throws NullPointerException {
@@ -43,10 +48,15 @@ public class Point {
     }
 
     public static List<String> convertPointListToStringList(List<Point> points) {
+        if (pointListIsNull(points)) return new ArrayList<>();
         List<String> results = new ArrayList<>();
         for (Point p : points) {
             results.add(p.toString());
         }
         return results;
+    }
+
+    private static boolean pointListIsNull(List<Point> points) {
+        return points == null;
     }
 }

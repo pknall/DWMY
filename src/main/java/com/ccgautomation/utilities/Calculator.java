@@ -1,8 +1,9 @@
 package com.ccgautomation.utilities;
 
-import com.ccgautomation.data.MeterReport;
-import com.ccgautomation.data.MeterReports;
+import com.ccgautomation.reports.MeterReportRecord;
+import com.ccgautomation.reports.CsvReportRecord;
 import com.ccgautomation.data.Point;
+import com.ccgautomation.reports.ReportRecord;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -76,8 +77,8 @@ public class Calculator {
      * 2) The meter report being recorded has data that DOES NOT exist in the Results list (add new item to list wr2 previous reports)
      * 3) The meter report being recorded DOES NOT have data for pre-existing items int eh Results list
      */
-    public static List<MeterReport> processMonthlyMeterTotals(List<Point> data, List<Date> meterRecordDates) {
-        List<MeterReport> results = new ArrayList<>();
+    public static List<ReportRecord> processMonthlyMeterTotals(List<Point> data, List<Date> meterRecordDates) {
+        List<ReportRecord> results = new ArrayList<>();
         Date currentMeterDate = meterRecordDates.remove(0);
         Date previousMeterDate = new Date(0);
 
@@ -118,11 +119,17 @@ public class Calculator {
 
             if (currentDate.after(currentMeterDate)) {
                 Float newValue = currentValue - previousValue;
-                MeterReport newPoint = new MeterReport(previousMeterDate, DateTools.incrementDate(currentMeterDate, -1), newValue);
+                try {
+                    MeterReportRecord newPoint = new MeterReportRecord(previousMeterDate, DateTools.incrementDate(currentMeterDate, -1), newValue);
 
-                //TODO:  Fix this hack
-                if (!firstMeterRead) results.add(newPoint);
-                firstMeterRead = false;
+                    //TODO:  Fix this hack
+                    if (!firstMeterRead) results.add(newPoint);
+                    firstMeterRead = false;
+                }
+                catch (NullPointerException ex) {
+                    //TODO: Fix Logger
+                    Logger.log(ex.getMessage());
+                }
 
                 previousDate = currentDate;
                 previousValue = currentValue;
@@ -134,8 +141,14 @@ public class Calculator {
         }
 
         Float newValue = currentValue - previousValue;
-        MeterReport newPoint = new MeterReport(previousMeterDate, currentMeterDate, newValue);
-        results.add(newPoint);
+        try {
+            MeterReportRecord newPoint = new MeterReportRecord(previousMeterDate, currentMeterDate, newValue);
+            results.add(newPoint);
+        }
+        catch (NullPointerException ex) {
+            //TODO: Fix Logger
+            Logger.log(ex.getMessage());
+        }
 
         return results;
     }
@@ -145,7 +158,7 @@ public class Calculator {
     public static void main(String[] args) {
 
         List<String> files = getFileList();
-        MeterReports meterReports = new MeterReports();
+        CsvReportRecord meterReports = new CsvReportRecord();
         String path = "C:\\";
         for (String file : files) {
             System.out.println(file);
@@ -170,9 +183,9 @@ public class Calculator {
             List<Point> dailyTotals = calculateDailyTotalsFromRawList(points);
             FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertPointListToStringList(dailyTotals)), newPath + "data\\" + newFileName + "_kwh_daily.csv");
 
-            List<MeterReport> meterTotals = processMonthlyMeterTotals(points, meterRecordDates);
+            List<ReportRecord> meterTotals = processMonthlyMeterTotals(points, meterRecordDates);
             FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertPointListToStringList(dailyTotals)), newPath + "data\\" + newFileName + "_kwh_meter_totals.csv");
-            meterReports.addMeterReport(meterTotals, newFileName.substring(0,newFileName.indexOf(".")));
+            meterReports.addReport(meterTotals, newFileName.substring(0,newFileName.indexOf(".")));
 
         }
         System.out.println(meterReports);
