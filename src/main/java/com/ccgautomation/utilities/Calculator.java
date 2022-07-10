@@ -1,7 +1,7 @@
 package com.ccgautomation.utilities;
 
 import com.ccgautomation.reports.MeterReportRecord;
-import com.ccgautomation.reports.CsvReportRecord;
+import com.ccgautomation.reports.CsvReport;
 import com.ccgautomation.data.Point;
 import com.ccgautomation.reports.ReportRecord;
 import org.jetbrains.annotations.NotNull;
@@ -158,7 +158,7 @@ public class Calculator {
     public static void main(String[] args) {
 
         List<String> files = getFileList();
-        CsvReportRecord meterReports = new CsvReportRecord();
+        CsvReport meterReports = new CsvReport();
         String path = "C:\\";
         for (String file : files) {
             System.out.println(file);
