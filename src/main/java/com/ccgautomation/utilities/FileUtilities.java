@@ -1,5 +1,7 @@
 package com.ccgautomation.utilities;
 
+import com.ccgautomation.data.Point;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -47,7 +49,7 @@ public class FileUtilities {
         }
     }
 
-    public static List<String> readCSVFileAsListOfString(String filename){
+    public static List<String> readCSVFileIntoAListOfString(String filename){
         List<String> results = new ArrayList<>();
         String line;
 
@@ -63,4 +65,39 @@ public class FileUtilities {
         return results;
     }
 
+    /*
+     Returns a two-column CSV list of Date and Value.
+     The original data file is organized as follows:
+     (line 1)  Path of Trend Point  (skipFirstTwoRows == 0)
+     (line 2)  Column headers (4)   (skipFirstTwoRows == 1)
+     (line 3+) Date, Excel Date, Value, Notes
+     If there are notes in column 4, there is no value in column 3.
+     */
+    public static List<String> readWebCtrlTrendCSVFileIntoAListOfStrings(String filename){
+        List<String> results = new ArrayList<>();
+        String line;
+        int skipFirstTwoRows = 0;
+
+        try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            while ((line = br.readLine()) != null) {
+                if (skipFirstTwoRows++ > 1) {
+                    line = StringTools.removeDoubleQuotesFromStrings(line);
+                    String[] fields = line.split(",");
+                    if ((fields != null)
+                            && (fields.length > 2)
+                            && (fields[0].length() > 0)
+                            && (fields[2].length() > 0)) {
+                        String dateString = DateTools.removeDecimalPortionOfSeconds(fields[0]);
+                        String valueString = fields[2];
+                        results.add(StringTools.removeDoubleQuotesFromStrings( dateString+ "," + valueString));
+                    }
+                }
+            }
+        }
+        catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+
+        return results;
+    }
 }

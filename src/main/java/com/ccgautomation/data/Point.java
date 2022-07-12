@@ -2,6 +2,8 @@ package com.ccgautomation.data;
 
 import com.ccgautomation.utilities.Configuration;
 import com.ccgautomation.utilities.DateTools;
+import com.ccgautomation.utilities.Logger;
+import com.ccgautomation.utilities.StringTools;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -47,16 +49,34 @@ public class Point {
         return dateString + "," + value.toString();
     }
 
-    public static List<String> convertPointListToStringList(List<Point> points) {
-        if (pointListIsNull(points)) return new ArrayList<>();
+    public static List<String> convertListOfPointsToListOfStrings(List<Point> points) {
         List<String> results = new ArrayList<>();
+        if (points == null) return results;
+        if (points.size() == 0) return results;
+        StringBuilder sb = new StringBuilder();
         for (Point p : points) {
             results.add(p.toString());
         }
         return results;
     }
 
-    private static boolean pointListIsNull(List<Point> points) {
-        return points == null;
+    public static List<Point> convertListOfStringsToListOfPoints(List<String> data) {
+        List<Point> points = new ArrayList<>();
+        if (data == null) return points;
+        for (String s : data) {
+            if (s == null) continue;
+            String[] fields = s.split(",");
+            if (fields.length < 2) continue;
+            String dateString = fields[0];
+            String valueString = fields[1];
+            try {
+                points.add(new Point(dateString, valueString));
+            }
+            // TODO: Fix Logger
+            catch (ParseException ex) {  Logger.log(ex.getMessage()); }
+            catch (NumberFormatException ex) {  Logger.log(ex.getMessage()); }
+            catch (NullPointerException ex) {  Logger.log(ex.getMessage()); }
+        }
+        return points;
     }
 }

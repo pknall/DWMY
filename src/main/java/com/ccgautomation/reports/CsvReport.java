@@ -2,6 +2,7 @@ package com.ccgautomation.reports;
 import com.ccgautomation.utilities.DateTools;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /*
@@ -31,7 +32,14 @@ public class CsvReport {
 
     public void addReport(List<ReportRecord> reports, String name) {
         addReportNameToHeader(name);
-        for (ReportRecord report : reports) { addReportToReportList(report); }
+        addNewReportToCsvReport(reports);
+    }
+
+    private void addNewReportToCsvReport(List<ReportRecord> reports) {
+        //for (ReportRecord report : reports) { addReportToReportList(report); }
+        Date currentNewReportDate;
+        Date currentCsvReportDate;
+
     }
 
     /*

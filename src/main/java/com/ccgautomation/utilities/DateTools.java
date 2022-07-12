@@ -5,6 +5,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
+import static com.ccgautomation.utilities.Configuration.MIDNIGHT_THRESHHOLD;
+
 public class DateTools {
 
     private final SimpleDateFormat datePattern;
@@ -107,7 +109,7 @@ public class DateTools {
         return datePattern.parse(dateString);
     }
 
-    public String removeDecimalPortionOfSeconds(String dateString) {
+    public static String removeDecimalPortionOfSeconds(String dateString) {
         int start = dateString.indexOf(".");
         if (start < 0) return dateString;
 
@@ -156,6 +158,13 @@ public class DateTools {
         c.setTime(date);
         c.add(Calendar.DATE, value);
         return c.getTime();
+    }
+
+    public static boolean isAtMidnight(Date date) {
+        Date dateAtMidnight = getThisMidnight(date);
+
+        if (Math.abs(date.getTime() - dateAtMidnight.getTime()) < MIDNIGHT_THRESHHOLD) return true;
+        else return false;
     }
 
 }

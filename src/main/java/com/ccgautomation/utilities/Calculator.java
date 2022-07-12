@@ -1,74 +1,86 @@
 package com.ccgautomation.utilities;
 
-import com.ccgautomation.reports.MeterReportRecord;
-import com.ccgautomation.reports.CsvReport;
 import com.ccgautomation.data.Point;
-import com.ccgautomation.reports.ReportRecord;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.Date;
 import java.util.List;
 
-import static com.ccgautomation.utilities.DateTools.isTheNextDay;
 
 // Until I think of a better name
 public class Calculator {
 
 
-    protected static List<Point> calculateDailyTotalsFromRawList(List<Point> data) {
+    public static List<Point> calculateMeterDailyTotalsFromListOfPoints(List<Point> data) {
         List<Point> results = new ArrayList<>();
 
-        if (data == null) return null;
-        if (data.size() < 2) return null;
+        if (data == null) return results;
+        if (data.size() < 2) return results;
 
-        Date currentDate = new Date(0);
-        Date previousDate = new Date(0);
-        Float previousValue = 0f;
-        Float currentValue = 0f;
+        Point currentPoint = data.get(0);
+        Point previousPoint = data.get(0);
+
         boolean first = true;
 
         for(Point p : data) {
-
-            currentDate = p.getDate();
-            currentValue = p.getValue();
-
-            if (currentValue == 0) continue;
+            currentPoint = p;
 
             if (first) {
                 first = false;
-                previousDate = currentDate;
-                previousValue = currentValue;
+                previousPoint = currentPoint;
                 continue;
             }
 
-            if (isTheNextDay(previousDate, currentDate)) {
-                Float newValue = currentValue - previousValue;
+            if (DateTools.isTheNextDay(previousPoint.getDate(), currentPoint.getDate())) {
+                //TODO: Make this return a midnight point instead of a value;
+                Float newValue = interpolateValue(previousPoint, currentPoint);
+
                 try {
-                    Point newPoint = new Point(DateTools.getThisMidnight(previousDate), newValue);
+                    Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
                     results.add(newPoint);
                 }
                 catch (Exception ex) {
                     // TODO: Fix Logger
                     Logger.log(ex.getMessage());
                 }
-
-                previousDate = currentDate;
-                previousValue = currentValue;
+                //TODO:  Change this such that it will shift to the previous midnight value
+                previousPoint = currentPoint;
             }
         }
 
-        Float newValue = currentValue - previousValue;
+        /*
+        Float newValue = currentPoint.getValue() - previousPoint.getValue();
         try {
-            Point newPoint = new Point(DateTools.getThisMidnight(previousDate), newValue);
+            Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
             results.add(newPoint);
         }
         catch (Exception ex) {
             // TODO: Fix Logger
             Logger.log(ex.getMessage());
         }
+        */
 
         return results;
+    }
+
+    private static Float interpolateValue(Point previousPoint, Point currentPoint) {
+        Float result = 0f;
+        Date midnight = DateTools.getThisMidnight(currentPoint.getDate());
+
+        Long currentPointTimeLong = currentPoint.getDate().getTime();
+        Long previousPointTimeLong = previousPoint.getDate().getTime();
+        Long midnightTimeLong = midnight.getTime();
+
+        Long period = currentPointTimeLong - previousPointTimeLong;
+        Long midnightPeriod = midnightTimeLong - previousPointTimeLong;
+
+        Float difference = currentPoint.getValue() - previousPoint.getValue();
+        Float factor = ((float)midnightPeriod / (float)period);
+        result += difference * factor;
+        if (result < 0) result = 0f;
+
+        return result;
     }
 
 
@@ -77,7 +89,8 @@ public class Calculator {
      * 2) The meter report being recorded has data that DOES NOT exist in the Results list (add new item to list wr2 previous reports)
      * 3) The meter report being recorded DOES NOT have data for pre-existing items int eh Results list
      */
-    public static List<ReportRecord> processMonthlyMeterTotals(List<Point> data, List<Date> meterRecordDates) {
+    /*
+    public static List<ReportRecord> calculateMonthlyTotalsFromDailyTotals(List<Point> data, List<Date> meterRecordDates) {
         List<ReportRecord> results = new ArrayList<>();
         Date currentMeterDate = meterRecordDates.remove(0);
         Date previousMeterDate = new Date(0);
@@ -153,115 +166,6 @@ public class Calculator {
         return results;
     }
 
+*/
 
-
-    public static void main(String[] args) {
-
-        List<String> files = getFileList();
-        CsvReport meterReports = new CsvReport();
-        String path = "C:\\";
-        for (String file : files) {
-            System.out.println(file);
-            List<Date> meterRecordDates = getDateList();
-            String newPath = "C:\\";
-            String newFileName = "_new_";
-            try {
-                newPath = file.substring(0, file.lastIndexOf("\\")+1);
-                path = newPath;
-                newFileName = file.substring(file.lastIndexOf("\\")+1);
-            }
-            catch (Exception ex) {
-                System.out.println(ex.getMessage());
-            }
-
-            List<String> data = FileUtilities.readCSVFileAsListOfString(file);
-            FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(data), newPath + "data\\" + newFileName + "_kwh.csv");
-
-            List<Point> points = new WebCTRLCSVTrendFileTools().preprocessMeterData(data);
-            FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertPointListToStringList(points)), newPath + "data\\" + newFileName + "_kwh_points.csv");
-
-            List<Point> dailyTotals = calculateDailyTotalsFromRawList(points);
-            FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertPointListToStringList(dailyTotals)), newPath + "data\\" + newFileName + "_kwh_daily.csv");
-
-            List<ReportRecord> meterTotals = processMonthlyMeterTotals(points, meterRecordDates);
-            FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertPointListToStringList(dailyTotals)), newPath + "data\\" + newFileName + "_kwh_meter_totals.csv");
-            meterReports.addReport(meterTotals, newFileName.substring(0,newFileName.indexOf(".")));
-
-        }
-        System.out.println(meterReports);
-        FileUtilities.writeTextFileAsString(meterReports.toString(), path +  "_totals.csv");
-    }
-
-    @NotNull
-    private static List<String> getFileList() {
-        List<String> files = new ArrayList<>();
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub3.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub4.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub5.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub6.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub7.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub8.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub9.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub10.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub11.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub12.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\sub13.csv");
-
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\cbv2.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\cbv3.csv");
-
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\kjp_pa.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\kjp_pb.csv");
-
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\lb_t1.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\lb_t2.csv");
-
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\rmh.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\pd1.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\epd-mdp.csv");
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\mdp.csv");
-
-
-        files.add("C:\\Users\\pknall\\Desktop\\Meters\\campus_total.csv");
-        return files;
-    }
-
-    @NotNull
-    private static List<Date> getDateList() {
-        List<Date> meterRecordDates = new ArrayList<>();
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("03/14/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("04/13/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("05/12/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("06/13/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("07/13/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("08/11/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("09/12/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("10/13/2017", "MM/dd/yyyy"));
-
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("11/11/2017", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("12/13/2017", "MM/dd/yyyy"));
-
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("01/15/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("02/14/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("03/14/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("04/13/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("05/12/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("06/13/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("07/14/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("08/14/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("09/12/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("10/11/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("11/10/2018", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("12/12/2018", "MM/dd/yyyy"));
-
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("01/12/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("02/13/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("03/14/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("04/12/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("05/14/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("06/13/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("07/13/2019", "MM/dd/yyyy"));
-        meterRecordDates.add(DateTools.convertStringToDateWithFormat("08/13/2019", "MM/dd/yyyy"));
-        return meterRecordDates;
-    }
 }
