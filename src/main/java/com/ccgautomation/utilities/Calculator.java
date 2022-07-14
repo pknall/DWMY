@@ -3,7 +3,6 @@ package com.ccgautomation.utilities;
 import com.ccgautomation.data.Point;
 
 import java.util.ArrayList;
-import java.util.Currency;
 import java.util.Date;
 import java.util.List;
 
@@ -12,14 +11,24 @@ import java.util.List;
 public class Calculator {
 
 
+    /*
+        Possible Conditions:
+        More than one day may pass between Previous and Current Date Trends.
+        The VALUE of the current point may be less than the VALUE of the previous point
+        There may be several thousand data points per day
+        Maybe do both ways?
+     */
     public static List<Point> calculateMeterDailyTotalsFromListOfPoints(List<Point> data) {
         List<Point> results = new ArrayList<>();
-
         if (data == null) return results;
         if (data.size() < 2) return results;
 
         Point currentPoint = data.get(0);
         Point previousPoint = data.get(0);
+
+        long currentPointIndex = 1;
+        long previousPointIndex = 0;
+        long dataSize = data.size();
 
         boolean first = true;
 
@@ -32,9 +41,14 @@ public class Calculator {
                 continue;
             }
 
+            /*
+             TODO:  This procedure takes the values at midnight and subtracts them.  A separate fuction may be needed
+                    to calculate values on a point-to-point basis
+             */
+
             if (DateTools.isTheNextDay(previousPoint.getDate(), currentPoint.getDate())) {
                 //TODO: Make this return a midnight point instead of a value;
-                Float newValue = interpolateValue(previousPoint, currentPoint);
+                Float newValue = calculateMidnightPointBetween(previousPoint, currentPoint);
 
                 try {
                     Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
@@ -64,7 +78,7 @@ public class Calculator {
         return results;
     }
 
-    private static Float interpolateValue(Point previousPoint, Point currentPoint) {
+    private static Float calculateMidnightPointBetween(Point previousPoint, Point currentPoint) {
         Float result = 0f;
         Date midnight = DateTools.getThisMidnight(currentPoint.getDate());
 

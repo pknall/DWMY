@@ -13,12 +13,16 @@ import java.util.List;
 /*
     Construction of this object guarantees that all fields are valid objects of the required type.
     If any fields are not valid during construction, the constructor throws the appropriate exception.
+
+    Valid is used by the calculation class to determine show that this point, when included in a report, was
+    calculated smoothly or if there was a difference between the midnight totals and accumulation (Decorator Pattern?)
  */
 
 public class Point {
 
     private final Date date;
     private final Float value;
+    private Float percentValid;
 
     public Point(String dateString, String valueString) throws ParseException, NumberFormatException, NullPointerException {
         if (dateString == null) throw new NullPointerException("Date cannot be null.");
@@ -26,6 +30,7 @@ public class Point {
         DateTools dateTools = new DateTools(Configuration.trendCSVFileDatePattern);
         this.date = dateTools.convertStringToDate(dateString);
         this.value = Float.parseFloat(valueString);
+        this.percentValid = 100f;
     }
 
     public Point(Date date, Float value) throws NullPointerException {
@@ -33,6 +38,7 @@ public class Point {
         if (value == null) throw new NullPointerException("Value cannot be null.");
         this.date = date;
         this.value = value;
+        this.percentValid = 100f;
     }
 
     public Date getDate() {
@@ -79,4 +85,7 @@ public class Point {
         }
         return points;
     }
+
+    public Float getPercentValid() { return percentValid; }
+    public void setPercentValid(Float percentValid) { this.percentValid = percentValid; }
 }
