@@ -17,39 +17,48 @@ public class Calculator {
         The VALUE of the current point may be less than the VALUE of the previous point
         There may be several thousand data points per day
         Maybe do both ways?
+
+        the first day should total value from the first trend point to the next day's midnight
+        each midnight point should be calculated and recorded in the Midnight Log, which is used for the totals
+        → The individual data points are used for the day-to-day calculation
+        → The individual values are still used for the running total
      */
     public static List<Point> calculateMeterDailyTotalsFromListOfPoints(List<Point> data) {
+
         List<Point> results = new ArrayList<>();
+        List<Point> midnightPointLog = new ArrayList<>();
         if (data == null) return results;
         if (data.size() < 2) return results;
 
-        Point currentPoint = data.get(0);
+        int currentPointIndex = 1;
+        int previousPointIndex = 0;
+        int dataSize = data.size();
         Point previousPoint = data.get(0);
+        Point currentPoint;
+        Point previousMidnightPoint = new Point(previousPoint.getDate(), previousPoint.getValue());
+        midnightPointLog.add(previousMidnightPoint);
+        Point currentMidnightPoint;
+        Float runningTotal = 0f;
 
-        long currentPointIndex = 1;
-        long previousPointIndex = 0;
-        long dataSize = data.size();
+        Date midnightTomorrow = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
 
-        boolean first = true;
+        while (currentPointIndex <= dataSize) {
+            previousPoint = data.get(previousPointIndex);
+            currentPoint = data.get(currentPointIndex);
 
-        for(Point p : data) {
-            currentPoint = p;
-
-            if (first) {
-                first = false;
-                previousPoint = currentPoint;
-                continue;
+            boolean resetPrevious = false;
+            while (previousPoint.getDate().after(midnightTomorrow)) {
+                results.add(new Point(midnightTomorrow, 0f));
+                midnightTomorrow = DateTools.incrementDate(midnightTomorrow, 1);
+                resetPrevious = true;
+            }
+            if (resetPrevious) {
+                midnightTomorrow = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
             }
 
-            /*
-             TODO:  This procedure takes the values at midnight and subtracts them.  A separate fuction may be needed
-                    to calculate values on a point-to-point basis
-             */
-
-            if (DateTools.isTheNextDay(previousPoint.getDate(), currentPoint.getDate())) {
-                //TODO: Make this return a midnight point instead of a value;
+            if (currentPoint.getDate().after(midnightTomorrow)) {
                 Float newValue = calculateMidnightPointBetween(previousPoint, currentPoint);
-
+                currentMidnightPoint = new Point(midnightTomorrow, newValue);
                 try {
                     Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
                     results.add(newPoint);
@@ -59,27 +68,24 @@ public class Calculator {
                     Logger.log(ex.getMessage());
                 }
                 //TODO:  Change this such that it will shift to the previous midnight value
-                previousPoint = currentPoint;
+                previousPointIndex = currentPointIndex;  // TODO: Wonky
             }
+            currentPointIndex++;
         }
-
-        /*
-        Float newValue = currentPoint.getValue() - previousPoint.getValue();
-        try {
-            Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
-            results.add(newPoint);
-        }
-        catch (Exception ex) {
-            // TODO: Fix Logger
-            Logger.log(ex.getMessage());
-        }
-        */
 
         return results;
     }
 
+    /*
+      This method assumes that the currentPoint date immediately proceeds previousPoint date.
+     */
     private static Float calculateMidnightPointBetween(Point previousPoint, Point currentPoint) {
         Float result = 0f;
+
+        if (currentPoint.getDate().getTime() - previousPoint.getDate().getTime() > Configuration.MILLISECONDS_IN_A_DAY) {
+            // Something bad has happened
+        }
+
         Date midnight = DateTools.getThisMidnight(currentPoint.getDate());
 
         Long currentPointTimeLong = currentPoint.getDate().getTime();
