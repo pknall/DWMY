@@ -12,6 +12,17 @@ public class Calculator {
 
 
     /*
+        Use Case:  Convert a list of arbitrary points to a list of daily readings starting with startDate.
+     */
+    public List<Point> convertListOfPointsToPeriodicValues(List<Point> pointList, Long duration, Date startDate, Date endDate) {
+        List<Point> results = new ArrayList<>();
+
+
+        return results;
+    }
+
+    
+    /*
         Possible Conditions:
         More than one day may pass between Previous and Current Date Trends.
         The VALUE of the current point may be less than the VALUE of the previous point
