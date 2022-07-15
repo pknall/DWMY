@@ -36,7 +36,13 @@ public class Calculator {
             currentPoint = pointList.get(currentIndex);
             currentPointAtMidnight = DateTools.getThisMidnight(currentPoint.getDate());     // Does this occur during the same partition/day...if so, skip
             if (currentPointAtMidnight.after(previousPointAtMidnight)) {
-                Float value = calculatePeriodicValue(previousPoint, currentPoint);
+                Float value = 0f;
+                try {
+                    value = calculatePeriodicValue(previousPoint, currentPoint);
+                }
+                catch (Exception ex) {
+                    // previous and current are more than 1 day apart
+                }
                 results.add(new Point(currentPointAtMidnight, value));
                 previousPoint = currentPoint;
                 previousPointAtMidnight = currentPointAtMidnight;
@@ -93,8 +99,14 @@ public class Calculator {
                 midnightTomorrow = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
             }
 
+            Float newValue = 0f;
             if (currentPoint.getDate().after(midnightTomorrow)) {
-                Float newValue = calculatePeriodicValue(previousPoint, currentPoint);
+                try {
+                    newValue = calculatePeriodicValue(previousPoint, currentPoint);
+                }
+                catch (Exception ex) {
+                    // More than one day apart
+                }
                 currentMidnightPoint = new Point(midnightTomorrow, newValue);
                 try {
                     Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
@@ -114,30 +126,45 @@ public class Calculator {
     }
 
     /*
-      This method assumes that the currentPoint date immediately proceeds previousPoint date.
+        Calculates the value that occurs between (previousPoint, currentPoint] when the dates of those points
+        straddle the reporting frame.
+
+        Interpolates between two values where previousPoint<reportTime<=currentPoint
+
+        If previousPoint < currentPoint < reportTime
+
+        This method assumes that the currentPoint date immediately proceeds previousPoint date.
      */
-    private static Float calculatePeriodicValue(Point previousPoint, Point currentPoint) {
+    protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint, Date reportTime) throws Exception {
         Float result = 0f;
 
         if (currentPoint.getDate().getTime() - previousPoint.getDate().getTime() > Configuration.MILLISECONDS_IN_A_DAY) {
-            // Something bad has happened
+            throw new Exception("Previous and Current Dates are more than 1 day apart.");
         }
-
-        Date midnight = DateTools.getThisMidnight(currentPoint.getDate());
+        if (previousPoint.getDate().after(currentPoint.getDate())) {
+            throw new Exception("Previous Date is after Current Date.");
+        }
 
         Long currentPointTimeLong = currentPoint.getDate().getTime();
         Long previousPointTimeLong = previousPoint.getDate().getTime();
-        Long midnightTimeLong = midnight.getTime();
+        Long reportTimeLong = reportTime.getTime();
 
         Long period = currentPointTimeLong - previousPointTimeLong;
-        Long midnightPeriod = midnightTimeLong - previousPointTimeLong;
+        //Long midnightPeriod = reportTimeLong - previousPointTimeLong;
+        Long midnightPeriod = (reportTime.getTime() > currentPoint.getDate().getTime()) ? period : reportTimeLong - previousPointTimeLong;
 
         Float difference = currentPoint.getValue() - previousPoint.getValue();
         Float factor = ((float)midnightPeriod / (float)period);
-        result += difference * factor;
-        if (result < 0) result = 0f;
+        result +=(difference * factor);
 
         return result;
+    }
+
+    /*
+        If not specified, assume daily.
+     */
+    protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint) throws Exception {
+        return calculatePeriodicValue(previousPoint, currentPoint, DateTools.getThisMidnight(currentPoint.getDate()));
     }
 
 

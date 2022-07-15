@@ -3,6 +3,7 @@ package com.ccgautomation.utilities;
 import com.ccgautomation.data.Point;
 import junit.framework.TestCase;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -145,4 +146,75 @@ public class CalculatorTest extends TestCase {
         assertEquals(result, results.get(2).getValue(),0.01f);
     }
 
+
+    /* protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint) */
+    /*            Day 1                   Day 2           Day 3          */
+    /*      A       B       C       D       E       F       G       H    */
+
+    public void test_calculatePeriodicValue_with_previous_value_before_midnight_and_current_value_after_midnight()
+    throws ParseException, Exception
+    {   // Points A and C
+        Point previousPoint = new Point("1/1/2022 11:00:00 PM EST", "0f");
+        Point currentPoint = new Point("1/2/2022 01:00:00 AM EST", "1f");
+        Float midnightValue = Calculator.calculatePeriodicValue(previousPoint, currentPoint);
+        assertEquals(0.5f, midnightValue);
+    }
+
+    public void test_calculatePeriodicValue_with_previous_and_current_values_one_day_apart()
+            throws ParseException, Exception
+    {   // Points B and E
+        Point previousPoint = new Point("1/1/2022 00:00:00 AM EST", "0f");
+        Point currentPoint = new Point("1/2/2022 00:00:00 AM EST", "1f");
+        Float midnightValue = Calculator.calculatePeriodicValue(previousPoint, currentPoint);
+        assertEquals(1f, midnightValue);
+    }
+
+    public void test_calculatePeriodicValue_with_previous_and_current_values_one_day_apart_with_negative_value()
+            throws ParseException, Exception
+    {   // Points B and E
+        Point previousPoint = new Point("1/1/2022 00:00:00 AM EST", "2f");
+        Point currentPoint = new Point("1/2/2022 00:00:00 AM EST", "1f");
+        Float midnightValue = Calculator.calculatePeriodicValue(previousPoint, currentPoint);
+        assertEquals(-1f, midnightValue);
+    }
+
+    public void test_calculatePeriodicValue_with_previous_and_current_values_before_report_time()
+            throws ParseException, Exception
+    {   // Points C and D
+        Point previousPoint = new Point("1/1/2022 00:01:00 AM EST", "0f");
+        Point currentPoint = new Point("1/1/2022 00:02:00 AM EST", "1f");
+        Date midnightPoint = DateTools.incrementDate(DateTools.getThisMidnight(currentPoint.getDate()),1);
+        Float midnightValue = Calculator.calculatePeriodicValue(previousPoint, currentPoint, midnightPoint);
+        assertEquals(1f, midnightValue);
+    }
+
+    public void test_calculatePeriodicValue_with_current_point_before_previous_point_throws_Exception()
+            throws ParseException, Exception
+    {   // Points C and D
+        Point previousPoint = new Point("1/1/2022 00:01:00 AM EST", "2f");
+        Point currentPoint = new Point("1/1/2022 00:02:00 AM EST", "1f");
+        Date midnightPoint = DateTools.incrementDate(DateTools.getThisMidnight(currentPoint.getDate()),1);
+        try {
+            Float midnightValue = Calculator.calculatePeriodicValue(currentPoint, previousPoint, midnightPoint);
+            assert(false);
+        }
+        catch (Exception ex) {
+            assertEquals("Previous Date is after Current Date.", ex.getMessage());
+        }
+    }
+
+    public void test_calculatePeriodicValue_with_previous_value_before_midnight_and_current_value_after_next_midnight_throws_Exception()
+            throws ParseException
+    {   // Points A and F
+        Point previousPoint = new Point("1/1/2022 11:00:00 PM EST", "0f");
+        Point currentPoint = new Point("1/3/2022 01:00:00 AM EST", "1f");
+        try {
+            Float midnightValue = Calculator.calculatePeriodicValue(previousPoint, currentPoint);
+            assertEquals(0.5f, midnightValue);
+            assert(false);
+        }
+        catch (Exception ex) {
+            assertEquals("Previous and Current Dates are more than 1 day apart.", ex.getMessage());
+        }
+    }
 }
