@@ -12,16 +12,42 @@ public class Calculator {
 
 
     /*
-        Use Case:  Convert a list of arbitrary points to a list of daily readings starting with startDate.
+        Use Case:  Convert a list of arbitrary points to a list of readings starting from startDate to endDate
+        at regular intervals of duration (ms).
      */
-    public List<Point> convertListOfPointsToPeriodicValues(List<Point> pointList, Long duration, Date startDate, Date endDate) {
+    public List<Point> convertListOfPointsToPeriodicValues(List<Point> pointList, Integer duration, Date startDate, Date endDate) {
         List<Point> results = new ArrayList<>();
+        if (pointList == null) return results;
+        if (pointList.size() < 2) return results;
 
+        // TODO: Periodic Readings
+        // Date nextPartition = DateTools.incrementMS(startDate, duration);
+
+        Integer currentIndex = 0;
+
+        Point previousPoint = pointList.get(currentIndex++);
+        Date previousPointAtMidnight = DateTools.getThisMidnight(previousPoint.getDate());
+        results.add(new Point(previousPointAtMidnight, previousPoint.getValue()));
+
+        Point currentPoint;
+        Date currentPointAtMidnight;
+
+        while (currentIndex <= pointList.size()) {
+            currentPoint = pointList.get(currentIndex);
+            currentPointAtMidnight = DateTools.getThisMidnight(currentPoint.getDate());     // Does this occur during the same partition/day...if so, skip
+            if (currentPointAtMidnight.after(previousPointAtMidnight)) {
+                Float value = calculatePeriodicValue(previousPoint, currentPoint);
+                results.add(new Point(currentPointAtMidnight, value));
+                previousPoint = currentPoint;
+                previousPointAtMidnight = currentPointAtMidnight;
+            }
+            currentIndex++;
+        }
 
         return results;
     }
 
-    
+
     /*
         Possible Conditions:
         More than one day may pass between Previous and Current Date Trends.
@@ -68,7 +94,7 @@ public class Calculator {
             }
 
             if (currentPoint.getDate().after(midnightTomorrow)) {
-                Float newValue = calculateMidnightPointBetween(previousPoint, currentPoint);
+                Float newValue = calculatePeriodicValue(previousPoint, currentPoint);
                 currentMidnightPoint = new Point(midnightTomorrow, newValue);
                 try {
                     Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
@@ -90,7 +116,7 @@ public class Calculator {
     /*
       This method assumes that the currentPoint date immediately proceeds previousPoint date.
      */
-    private static Float calculateMidnightPointBetween(Point previousPoint, Point currentPoint) {
+    private static Float calculatePeriodicValue(Point previousPoint, Point currentPoint) {
         Float result = 0f;
 
         if (currentPoint.getDate().getTime() - previousPoint.getDate().getTime() > Configuration.MILLISECONDS_IN_A_DAY) {

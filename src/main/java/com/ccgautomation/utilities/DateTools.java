@@ -167,4 +167,12 @@ public class DateTools {
         else return false;
     }
 
+    public static Date incrementMS(Date date, Integer value) {
+        Calendar c = Calendar.getInstance();
+        c.setTime(date);
+        c.add(Calendar.MILLISECOND, value);
+
+        return c.getTime();
+    }
+
 }
