@@ -36,7 +36,7 @@ public class Application {
             List<Point> points = Point.convertListOfStringsToListOfPoints(data);
             FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertListOfPointsToListOfStrings(points)), newPath + "data\\" + newFileName + "_step2.csv");
 
-            List<Point> dailyTotals = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(points);
+            List<Point> dailyTotals = Calculator.convertListOfPointsToListOfPeriodicValues(points);
             FileUtilities.writeTextFileAsString(StringTools.convertStringListToString(Point.convertListOfPointsToListOfStrings(dailyTotals)), newPath + "data\\" + newFileName + "_step3.csv");
 
             //List<ReportRecord> meterTotals = Calculator.calculateMonthlyTotalsFromDailyTotals(dailyTotals, meterRecordDates);

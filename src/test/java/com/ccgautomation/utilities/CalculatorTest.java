@@ -13,18 +13,19 @@ public class CalculatorTest extends TestCase {
     /* public static List<Point> calculateMeterDailyTotalsFromListOfPoints(List<Point> data) */
 
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Empty_List_With_Null_Data() {
-        List<Point> results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(null);
+        List<Point> results = Calculator.convertListOfPointsToListOfPeriodicValues(null);
         assertEquals(0, results.size());
     }
 
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Empty_List_With_Empty_Data() {
-        List<Point> results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(new ArrayList<>());
+        List<Point> results = Calculator.convertListOfPointsToListOfPeriodicValues(new ArrayList<>());
         assertEquals(0, results.size());
     }
+
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Empty_List_With_One_Item_Of_Data() {
         List<Point> results = new ArrayList<>();
         results.add(new Point(new Date(0), 1f));
-        results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(new ArrayList<>());
+        results = Calculator.convertListOfPointsToListOfPeriodicValues(new ArrayList<>());
         assertEquals(0, results.size());
     }
 
@@ -37,7 +38,22 @@ public class CalculatorTest extends TestCase {
             pointList.add(new Point("1/2/2022 00:00:00 AM EST", "1f"));
         }
         catch (Exception ex) {}
-        results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(pointList);
+        results = Calculator.convertListOfPointsToListOfPeriodicValues(pointList);
+        assertEquals(1, results.size());
+        assertEquals("Sat Jan 01 00:00:00 EST 2022", results.get(0).getDate().toString());
+        assertEquals(1f, results.get(0).getValue());
+    }
+
+    // Starts at Midnight
+    public void test_calculateMeterDailyTotals_From_List_Of_Two_Nonmidnight_Points_Returns_Valid_Data_With_One_Midnight_Item() {
+        List<Point> results;
+        List<Point> pointList = new ArrayList<>();
+        try {
+            pointList.add(new Point("12/31/2021 11:00:00 PM EST", "0f"));
+            pointList.add(new Point("1/2/2022 01:00:00 AM EST", "1f"));
+        }
+        catch (Exception ex) {}
+        results = Calculator.convertListOfPointsToListOfPeriodicValues(pointList);
         assertEquals(1, results.size());
         assertEquals("Sat Jan 01 00:00:00 EST 2022", results.get(0).getDate().toString());
         assertEquals(1f, results.get(0).getValue());

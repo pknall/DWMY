@@ -15,6 +15,7 @@ public class Calculator {
         Use Case:  Convert a list of arbitrary points to a list of readings starting from startDate to endDate
         at regular intervals of duration (ms).
      */
+    /*
     public List<Point> convertListOfPointsToListOfPeriodicValues(List<Point> pointList, Integer duration, Date startDate, Date endDate) {
         List<Point> results = new ArrayList<>();
         if (pointList == null) return results;
@@ -48,71 +49,96 @@ public class Calculator {
         return results;
     }
 
+     */
+
     // Assume Daily Totals if startDate and duration are not provided
-    public static List<Point> calculatePeriodicPartitionValuesFromListOfPoints(List<Point> data) {
+    public static List<Point> convertListOfPointsToListOfPeriodicValues(List<Point> data) {
         if ((data == null) || (data.size() < 2)) return new ArrayList<>();
         Date partitionStartDate = DateTools.getThisMidnight(data.get(0).getDate());
-        return calculatePeriodicPartitionValuesFromListOfPoints(data, partitionStartDate, Configuration.MILLISECONDS_IN_A_DAY);
+        return convertListOfPointsToListOfPeriodicValues(data, partitionStartDate, Configuration.MILLISECONDS_IN_A_DAY);
     }
 
 
     /*
-        Possible Conditions:
-        More than one day may pass between Previous and Current Date Trends.
-        The VALUE of the current point may be less than the VALUE of the previous point
-        There may be several thousand data points per day
-        Maybe do both ways?
+        Need to normalize the points across partitions
+        If the Current Point is AT the Data Partition, RECORD CURRENT and INCREMENT the Data Partition
+        If the Current Point is BEFORE the Data Partition, then
+            If the Next Point is BEFORE or AT the Next Data Partition, then proceed to next point
+            (Straddle) If the Next Point is AFTER the next Partition, the LINEARIZE and RECORD
+        If the Current Point is AFTER the Data Partition, then INCREMENT the Data Partition
 
-        the first day should total value from the first trend point to the next day's midnight
-        each midnight point should be calculated and recorded in the Midnight Log, which is used for the totals
-        → The individual data points are used for the day-to-day calculation
-        → The individual values are still used for the running total
      */
-    public static List<Point> calculatePeriodicPartitionValuesFromListOfPoints(List<Point> data, Date partitionStartDate, Integer duration) {
+    public static List<Point> convertListOfPointsToListOfPeriodicValues(List<Point> data, Date partitionStartDate, Integer duration) {
 
         if ((data == null) || (data.size() < 2) || (partitionStartDate == null) || (duration == null) || (duration <= 0))
             return new ArrayList<>();
 
         List<Point> results = new ArrayList<>();
 
-        int currentPointIndex = 1;
-        int previousPointIndex = 0;
+        int currentPointIndex = 0;
 
-        Point previousPoint;
         Point currentPoint;
 
-        Date nextPartitionDate = DateTools.incrementMS(partitionStartDate, duration);
+        // Initialize Current Partition Date
         Date currentPartitionDate = partitionStartDate;
-
-        // If first point is before, at, or after partitionTime?
-        results.add(new Point(partitionStartDate, data.get(0).getValue()));  //?
+        if (currentPartitionDate.before(data.get(0).getDate())) {
+            currentPartitionDate = DateTools.incrementDate(currentPartitionDate,1);
+        }
+        Date nextPartitionDate = DateTools.incrementMS(currentPartitionDate, duration);
 
         while (currentPointIndex < data.size()) {
-            previousPoint = data.get(previousPointIndex);
             currentPoint = data.get(currentPointIndex);
 
-            /*  If previous point is after partitionStartTime...before?
-            boolean resetPrevious = false;
-            while (previousPoint.getDate().after(nextPartitionDate)) {
-                results.add(new Point(nextPartitionDate, 0f));
-                nextPartitionDate = DateTools.incrementDate(nextPartitionDate, 1);
-                resetPrevious = true;
-            }
-            if (resetPrevious) {
-                nextPartitionDate = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
-            }
-
-             */
-
-            if (!currentPoint.getDate().before(nextPartitionDate)) {
-                Float newValue = createPeriodicValue(previousPoint, currentPoint);
-                createPeriodicPoint(results, currentPartitionDate, newValue);
+            if (areTheSameTime(currentPoint.getDate(), currentPartitionDate, Configuration.ONE_MINUTE)) {
+                createPeriodicPoint(results, currentPartitionDate, currentPoint.getValue());
                 currentPartitionDate = nextPartitionDate;
                 nextPartitionDate = DateTools.incrementMS(currentPartitionDate, duration);
             }
-            previousPointIndex = currentPointIndex++;
+            else {
+                if ((data.size() - currentPointIndex) > 0) {
+                    if  (currentPoint.getDate().before(currentPartitionDate)){
+                        Point nextPoint = data.get(currentPointIndex + 1);
+                        if (nextPoint.getDate().after(nextPartitionDate)) {
+                            Float newValue = createPeriodicValue(currentPoint, nextPoint);
+                            createPeriodicPoint(results, currentPartitionDate, newValue);
+                            currentPartitionDate = nextPartitionDate;
+                            nextPartitionDate = DateTools.incrementMS(currentPartitionDate, duration);
+                        } else {
+                            // Only increment if currentPoint if before currentPartition and nextPoint is
+                            // at or before the nextPartition
+                            currentPointIndex++;
+                        }
+                    } else {
+                        // Increment the partition if the current point is at or after the current Partition
+                        currentPartitionDate = nextPartitionDate;
+                        nextPartitionDate = DateTools.incrementMS(currentPartitionDate, duration);
+                    }
+                } else {
+                    // Do Nothing
+                }
+                /*
+                if ((data.size() - currentPointIndex) > 0){
+                    // Current Point is at or after the next partition time
+                    Point nextPoint = data.get(currentPointIndex + 1);
+                    if (!nextPoint.getDate().before(nextPartitionDate)) {
+                        Float newValue = createPeriodicValue(currentPoint, nextPoint);
+                        createPeriodicPoint(results, currentPartitionDate, newValue);
+                        currentPartitionDate = nextPartitionDate;
+                        nextPartitionDate = DateTools.incrementMS(currentPartitionDate, duration);
+                    }
+                }
+                else {
+                }
+
+                 */
+            }
+            currentPointIndex++;
         }
         return results;
+    }
+
+    private static boolean areTheSameTime(Date date1, Date date2, Long tolerance) {
+        return (Math.abs(date1.getTime() - date2.getTime()) < tolerance);
     }
 
     private static void createPeriodicPoint(List<Point> results, Date currentPartitionDate, Float newValue) {
