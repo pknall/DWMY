@@ -13,37 +13,37 @@ public class CalculatorTest extends TestCase {
     /* public static List<Point> calculateMeterDailyTotalsFromListOfPoints(List<Point> data) */
 
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Empty_List_With_Null_Data() {
-        List<Point> results = Calculator.calculateMeterDailyTotalsFromListOfPoints(null);
+        List<Point> results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(null);
         assertEquals(0, results.size());
     }
 
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Empty_List_With_Empty_Data() {
-        List<Point> results = Calculator.calculateMeterDailyTotalsFromListOfPoints(new ArrayList<>());
+        List<Point> results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(new ArrayList<>());
         assertEquals(0, results.size());
     }
-
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Empty_List_With_One_Item_Of_Data() {
         List<Point> results = new ArrayList<>();
         results.add(new Point(new Date(0), 1f));
-        results = Calculator.calculateMeterDailyTotalsFromListOfPoints(new ArrayList<>());
+        results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(new ArrayList<>());
         assertEquals(0, results.size());
     }
 
     // Starts at Midnight
-    public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Valid_Data_With_Two_Midnight_Items() {
-        List<Point> results = new ArrayList<>();
+    public void test_calculateMeterDailyTotals_From_List_Of_Two_Midnight_Points_Returns_Valid_Data_With_One_Midnight_Item() {
+        List<Point> results;
         List<Point> pointList = new ArrayList<>();
         try {
             pointList.add(new Point("1/1/2022 00:00:00 AM EST", "0f"));
             pointList.add(new Point("1/2/2022 00:00:00 AM EST", "1f"));
         }
         catch (Exception ex) {}
-        results = Calculator.calculateMeterDailyTotalsFromListOfPoints(pointList);
+        results = Calculator.calculatePeriodicPartitionValuesFromListOfPoints(pointList);
         assertEquals(1, results.size());
         assertEquals("Sat Jan 01 00:00:00 EST 2022", results.get(0).getDate().toString());
         assertEquals(1f, results.get(0).getValue());
     }
 
+/*
     // Starts at Midnight
     public void test_calculateMeterDailyTotalsFromListOfPoints_Returns_Valid_Data_With_Three_Midnight_Items() {
         List<Point> results = new ArrayList<>();
@@ -146,7 +146,7 @@ public class CalculatorTest extends TestCase {
         assertEquals(result, results.get(2).getValue(),0.01f);
     }
 
-
+*/
     /* protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint) */
     /*            Day 1                   Day 2           Day 3          */
     /*      A       B       C       D       E       F       G       H    */
@@ -169,7 +169,7 @@ public class CalculatorTest extends TestCase {
         assertEquals(1f, midnightValue);
     }
 
-    public void test_calculatePeriodicValue_with_previous_and_current_values_one_day_apart_with_negative_value()
+    public void test_calculatePeriodicValue_with_previous_and_current_values_one_midnight_apart_with_negative_value()
             throws ParseException, Exception
     {   // Points B and E
         Point previousPoint = new Point("1/1/2022 00:00:00 AM EST", "2f");
@@ -178,7 +178,7 @@ public class CalculatorTest extends TestCase {
         assertEquals(-1f, midnightValue);
     }
 
-    public void test_calculatePeriodicValue_with_previous_and_current_values_before_report_time()
+    public void test_calculatePeriodicValue_with_previous_and_current_values_before_report_time_results_in_total()
             throws ParseException, Exception
     {   // Points C and D
         Point previousPoint = new Point("1/1/2022 00:01:00 AM EST", "0f");

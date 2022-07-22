@@ -2,6 +2,8 @@ package com.ccgautomation.utilities;
 
 import junit.framework.TestCase;
 
+import java.util.Date;
+
 public class DateToolsTest extends TestCase {
 
     public void testConvertDateWithoutSeconds() {
@@ -37,5 +39,13 @@ public class DateToolsTest extends TestCase {
         catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
+    }
+
+    public void testIncrementMS() {
+        Date thisDate = new Date(0);
+        Date newDate = DateTools.incrementMS(thisDate, 86400000);
+        assertEquals(86400000, newDate.getTime() - thisDate.getTime());
+        //System.out.println(thisDate);
+        //System.out.println(newDate);
     }
 }

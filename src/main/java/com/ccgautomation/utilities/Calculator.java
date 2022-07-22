@@ -37,12 +37,7 @@ public class Calculator {
             currentPointAtMidnight = DateTools.getThisMidnight(currentPoint.getDate());     // Does this occur during the same partition/day...if so, skip
             if (currentPointAtMidnight.after(previousPointAtMidnight)) {
                 Float value = 0f;
-                try {
-                    value = calculatePeriodicValue(previousPoint, currentPoint);
-                }
-                catch (Exception ex) {
-                    // previous and current are more than 1 day apart
-                }
+                value = createPeriodicValue(previousPoint, currentPoint, value);
                 results.add(new Point(currentPointAtMidnight, value));
                 previousPoint = currentPoint;
                 previousPointAtMidnight = currentPointAtMidnight;
@@ -51,6 +46,13 @@ public class Calculator {
         }
 
         return results;
+    }
+
+    // Assume Daily Totals if startDate and duration are not provided
+    public static List<Point> calculatePeriodicPartitionValuesFromListOfPoints(List<Point> data) {
+        if ((data == null) || (data.size() < 2)) return new ArrayList<>();
+        Date partitionStartDate = DateTools.getThisMidnight(data.get(0).getDate());
+        return calculatePeriodicPartitionValuesFromListOfPoints(data, partitionStartDate, Configuration.MILLISECONDS_IN_A_DAY);
     }
 
 
@@ -66,102 +68,104 @@ public class Calculator {
         → The individual data points are used for the day-to-day calculation
         → The individual values are still used for the running total
      */
-    public static List<Point> calculateMeterDailyTotalsFromListOfPoints(List<Point> data) {
+    public static List<Point> calculatePeriodicPartitionValuesFromListOfPoints(List<Point> data, Date partitionStartDate, Integer duration) {
+
+        if ((data == null) || (data.size() < 2) || (partitionStartDate == null) || (duration == null) || (duration <= 0))
+            return new ArrayList<>();
 
         List<Point> results = new ArrayList<>();
-        List<Point> midnightPointLog = new ArrayList<>();
-        if (data == null) return results;
-        if (data.size() < 2) return results;
 
         int currentPointIndex = 1;
         int previousPointIndex = 0;
-        int dataSize = data.size();
-        Point previousPoint = data.get(0);
+
+        Point previousPoint;
         Point currentPoint;
-        Point previousMidnightPoint = new Point(previousPoint.getDate(), previousPoint.getValue());
-        midnightPointLog.add(previousMidnightPoint);
-        Point currentMidnightPoint;
-        Float runningTotal = 0f;
 
-        Date midnightTomorrow = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
+        Date nextPartitionDate = DateTools.incrementMS(partitionStartDate, duration);
+        Date currentPartitionDate = partitionStartDate;
 
-        while (currentPointIndex <= dataSize) {
+        // If first point is before, at, or after partitionTime?
+        results.add(new Point(partitionStartDate, data.get(0).getValue()));  //?
+
+        while (currentPointIndex < data.size()) {
             previousPoint = data.get(previousPointIndex);
             currentPoint = data.get(currentPointIndex);
 
+            /*  If previous point is after partitionStartTime...before?
             boolean resetPrevious = false;
-            while (previousPoint.getDate().after(midnightTomorrow)) {
-                results.add(new Point(midnightTomorrow, 0f));
-                midnightTomorrow = DateTools.incrementDate(midnightTomorrow, 1);
+            while (previousPoint.getDate().after(nextPartitionDate)) {
+                results.add(new Point(nextPartitionDate, 0f));
+                nextPartitionDate = DateTools.incrementDate(nextPartitionDate, 1);
                 resetPrevious = true;
             }
             if (resetPrevious) {
-                midnightTomorrow = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
+                nextPartitionDate = DateTools.incrementDate(DateTools.getThisMidnight(data.get(previousPointIndex).getDate()), 1);
             }
 
-            Float newValue = 0f;
-            if (currentPoint.getDate().after(midnightTomorrow)) {
-                try {
-                    newValue = calculatePeriodicValue(previousPoint, currentPoint);
-                }
-                catch (Exception ex) {
-                    // More than one day apart
-                }
-                currentMidnightPoint = new Point(midnightTomorrow, newValue);
-                try {
-                    Point newPoint = new Point(DateTools.getThisMidnight(previousPoint.getDate()), newValue);
-                    results.add(newPoint);
-                }
-                catch (Exception ex) {
-                    // TODO: Fix Logger
-                    Logger.log(ex.getMessage());
-                }
-                //TODO:  Change this such that it will shift to the previous midnight value
-                previousPointIndex = currentPointIndex;  // TODO: Wonky
+             */
+
+            if (!currentPoint.getDate().before(nextPartitionDate)) {
+                Float newValue = createPeriodicValue(previousPoint, currentPoint);
+                createPeriodicPoint(results, currentPartitionDate, newValue);
+                currentPartitionDate = nextPartitionDate;
+                nextPartitionDate = DateTools.incrementMS(currentPartitionDate, duration);
             }
-            currentPointIndex++;
+            previousPointIndex = currentPointIndex++;
         }
-
         return results;
+    }
+
+    private static void createPeriodicPoint(List<Point> results, Date currentPartitionDate, Float newValue) {
+        try {
+            results.add( new Point(currentPartitionDate, newValue));
+        }
+        catch (Exception ex) {
+            // TODO: Fix Logger
+            Logger.log(ex.getMessage());
+        }
+    }
+
+    private static Float createPeriodicValue(Point previousPoint, Point currentPoint) {
+        try {
+            return calculatePeriodicValue(previousPoint, currentPoint);
+            // Need to use this for the next partition's calculation?  No.  Just calculation partition values here
+        }
+        catch (Exception ex) {
+            // More than one partition apart ??
+        }
+        return 0f;
     }
 
     /*
         Calculates the value that occurs between (previousPoint, currentPoint] when the dates of those points
         straddle the reporting frame.
-
-        Interpolates between two values where previousPoint<reportTime<=currentPoint
-
-        If previousPoint < currentPoint < reportTime
-
+        If previousPoint and currentPoint occur before the report time, the difference between previousPoint and
+        currentPoint is returned.
+/g
         This method assumes that the currentPoint date immediately proceeds previousPoint date.
      */
-    protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint, Date reportTime) throws Exception {
-        Float result = 0f;
-
-        if (currentPoint.getDate().getTime() - previousPoint.getDate().getTime() > Configuration.MILLISECONDS_IN_A_DAY) {
+    protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint, Date partitionTime) throws Exception {
+        if ( (currentPoint.getDate().getTime() - previousPoint.getDate().getTime()) > Configuration.MILLISECONDS_IN_A_DAY) {
             throw new Exception("Previous and Current Dates are more than 1 day apart.");
         }
         if (previousPoint.getDate().after(currentPoint.getDate())) {
             throw new Exception("Previous Date is after Current Date.");
         }
-
         Long currentPointTimeLong = currentPoint.getDate().getTime();
         Long previousPointTimeLong = previousPoint.getDate().getTime();
-        Long reportTimeLong = reportTime.getTime();
+        Long partitionTimeLong = partitionTime.getTime();
 
         Long period = currentPointTimeLong - previousPointTimeLong;
-        //Long midnightPeriod = reportTimeLong - previousPointTimeLong;
-        Long midnightPeriod = (reportTime.getTime() > currentPoint.getDate().getTime()) ? period : reportTimeLong - previousPointTimeLong;
+        Long resultTimeLong = (partitionTime.after(currentPoint.getDate())) ? period : partitionTimeLong - previousPointTimeLong;
 
         Float difference = currentPoint.getValue() - previousPoint.getValue();
-        Float factor = ((float)midnightPeriod / (float)period);
-        result +=(difference * factor);
+        Float factor = ((float)resultTimeLong / (float)period);
 
-        return result;
+        return difference * factor;
     }
 
     /*
-        If not specified, assume daily.
+        If not specified, assume a midnight partitionTime.
      */
     protected static Float calculatePeriodicValue(Point previousPoint, Point currentPoint) throws Exception {
         return calculatePeriodicValue(previousPoint, currentPoint, DateTools.getThisMidnight(currentPoint.getDate()));
