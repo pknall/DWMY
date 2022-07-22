@@ -15,7 +15,7 @@ public class Calculator {
         Use Case:  Convert a list of arbitrary points to a list of readings starting from startDate to endDate
         at regular intervals of duration (ms).
      */
-    public List<Point> convertListOfPointsToPeriodicValues(List<Point> pointList, Integer duration, Date startDate, Date endDate) {
+    public List<Point> convertListOfPointsToListOfPeriodicValues(List<Point> pointList, Integer duration, Date startDate, Date endDate) {
         List<Point> results = new ArrayList<>();
         if (pointList == null) return results;
         if (pointList.size() < 2) return results;
@@ -37,7 +37,7 @@ public class Calculator {
             currentPointAtMidnight = DateTools.getThisMidnight(currentPoint.getDate());     // Does this occur during the same partition/day...if so, skip
             if (currentPointAtMidnight.after(previousPointAtMidnight)) {
                 Float value = 0f;
-                value = createPeriodicValue(previousPoint, currentPoint, value);
+                value = createPeriodicValue(previousPoint, currentPoint);
                 results.add(new Point(currentPointAtMidnight, value));
                 previousPoint = currentPoint;
                 previousPointAtMidnight = currentPointAtMidnight;
